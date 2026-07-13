@@ -1,0 +1,440 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Romaneio de Conferência de Carregamento</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --slate:#161b22;
+    --slate-2:#1f2630;
+    --line:#2b3543;
+    --amber:#f2a007;
+    --amber-dk:#c47c00;
+    --ink:#111418;
+    --muted:#8a97a8;
+    --paper:#ffffff;
+    --paper-line:#111418;
+    --grid:#000;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:"IBM Plex Sans",system-ui,sans-serif;
+    background:#0e1116;
+    color:#e7edf5;
+    -webkit-font-smoothing:antialiased;
+  }
+  .app{display:grid;grid-template-columns:340px 1fr;min-height:100vh}
+
+  /* ---------- Painel de controle ---------- */
+  .panel{
+    background:linear-gradient(180deg,var(--slate),#12161c);
+    border-right:1px solid var(--line);
+    padding:22px 20px 40px;
+    position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;
+  }
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .brand .dot{width:34px;height:34px;border-radius:8px;background:var(--amber);
+    display:grid;place-items:center;color:#231600;font-weight:800;font-family:"Barlow Semi Condensed";font-size:20px;
+    box-shadow:0 0 0 1px var(--amber-dk) inset}
+  .brand h1{font-family:"Barlow Semi Condensed";font-weight:700;font-size:19px;letter-spacing:.3px;margin:0;line-height:1.05;text-transform:uppercase}
+  .brand p{margin:2px 0 0;font-size:11px;color:var(--muted);letter-spacing:.4px;text-transform:uppercase}
+
+  .step{margin-top:26px}
+  .step-h{font-family:"Barlow Semi Condensed";text-transform:uppercase;letter-spacing:.6px;
+    font-size:12px;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .step-h span.n{width:18px;height:18px;border-radius:50%;background:var(--amber);color:#231600;
+    display:grid;place-items:center;font-size:11px;font-weight:700}
+
+  .drop{
+    border:1.5px dashed #3a475a;border-radius:12px;background:#151b23;
+    padding:22px 14px;text-align:center;cursor:pointer;transition:.15s;
+  }
+  .drop:hover,.drop.drag{border-color:var(--amber);background:#1a212b}
+  .drop svg{opacity:.8}
+  .drop b{display:block;font-size:13px;margin-top:8px}
+  .drop small{color:var(--muted);font-size:11px}
+  .file-ok{display:none;margin-top:10px;font-size:12px;color:#7ee2a8;background:#12241a;
+    border:1px solid #1f5137;border-radius:8px;padding:8px 10px;word-break:break-all}
+
+  label.fld{display:block;margin:12px 0 4px;font-size:11px;color:var(--muted);
+    text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  input.tf{width:100%;background:#0f141a;border:1px solid var(--line);border-radius:8px;
+    color:#eef3f9;padding:9px 11px;font-size:14px;font-family:inherit}
+  input.tf:focus{outline:none;border-color:var(--amber)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .toggles{display:flex;flex-direction:column;gap:2px;margin-top:4px}
+  .tog{display:flex;align-items:center;justify-content:space-between;
+    padding:8px 2px;border-bottom:1px solid #202832;font-size:13px}
+  .tog:last-child{border-bottom:0}
+  .switch{position:relative;width:38px;height:22px;flex:0 0 auto}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#39424f;border-radius:20px;transition:.15s;cursor:pointer}
+  .slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;
+    background:#fff;border-radius:50%;transition:.15s}
+  .switch input:checked + .slider{background:var(--amber)}
+  .switch input:checked + .slider:before{transform:translateX(16px)}
+
+  .btn{width:100%;margin-top:22px;background:var(--amber);color:#231600;border:0;border-radius:10px;
+    padding:14px;font-size:15px;font-weight:700;font-family:"Barlow Semi Condensed";letter-spacing:.5px;
+    text-transform:uppercase;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn:hover{background:#ffb01f}
+  .btn:disabled{background:#39424f;color:#7c8899;cursor:not-allowed}
+  .hint{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;text-align:center}
+
+  /* ---------- Área de pré-visualização ---------- */
+  .stage{padding:30px 30px 60px;overflow:auto}
+  .stage-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px}
+  .stage-top .lbl{font-family:"Barlow Semi Condensed";text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-size:13px}
+  .count-pill{background:#1c2430;border:1px solid var(--line);color:#cdd7e3;border-radius:20px;
+    padding:5px 12px;font-size:12px;font-weight:600}
+
+  .empty{display:grid;place-items:center;height:70vh;text-align:center;color:var(--muted)}
+  .empty .big{font-family:"Barlow Semi Condensed";font-size:26px;color:#4d5a6b;text-transform:uppercase;letter-spacing:1px}
+
+  /* ---------- A folha (romaneio) ---------- */
+  .sheet-wrap{display:flex;justify-content:center}
+  .sheet{
+    background:var(--paper);color:var(--ink);width:210mm;min-height:297mm;
+    padding:12mm 11mm;box-shadow:0 10px 40px rgba(0,0,0,.5);
+    font-family:"IBM Plex Sans",sans-serif;
+  }
+  .rm-head{display:flex;justify-content:space-between;align-items:flex-start;
+    border-bottom:2.5px solid var(--paper-line);padding-bottom:8px}
+  .rm-title{font-family:"Barlow Semi Condensed";font-weight:700;text-transform:uppercase;line-height:1}
+  .rm-title .t1{font-size:22px;letter-spacing:.5px}
+  .rm-title .t2{font-size:12px;letter-spacing:2px;color:#333;margin-top:3px;font-weight:600}
+  .rm-num{text-align:right;font-family:"Barlow Semi Condensed"}
+  .rm-num .k{font-size:10px;letter-spacing:1px;color:#555;text-transform:uppercase}
+  .rm-num .v{font-size:26px;font-weight:700;line-height:1}
+
+  .rm-meta{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;margin-top:9px;
+    border:1px solid var(--paper-line);border-radius:0}
+  .rm-meta .cell{padding:6px 9px;border-right:1px solid var(--paper-line)}
+  .rm-meta .cell:last-child{border-right:0}
+  .rm-meta .k{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#555;font-weight:700}
+  .rm-meta .v{font-size:14px;font-weight:600;margin-top:1px;min-height:17px}
+
+  table.rm{width:100%;border-collapse:collapse;margin-top:10px;table-layout:fixed}
+  table.rm th,table.rm td{border:1px solid var(--grid);padding:0}
+  table.rm thead th{
+    background:#111 !important;color:#fff !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+    font-family:"Barlow Semi Condensed";text-transform:uppercase;font-size:10.5px;letter-spacing:.5px;
+    padding:5px 4px;font-weight:600
+  }
+  table.rm td{padding:0 5px;height:30px;font-size:11.5px;vertical-align:middle}
+  .c-chk{width:34px;text-align:center}
+  .c-ord{width:34px;text-align:center;font-weight:700}
+  .c-ped{width:78px;text-align:center;font-variant-numeric:tabular-nums}
+  .c-vol{width:96px}
+  .chkbox{width:16px;height:16px;border:1.6px solid #000;display:inline-block;border-radius:2px}
+  .cli{font-weight:600;font-size:11.5px;line-height:1.15}
+  .fan{font-size:10px;color:#444;line-height:1.15}
+  .addr{font-size:9.5px;color:#555;line-height:1.15}
+  tr.zebra td{background:#f3f4f6;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  td.volcell{background:repeating-linear-gradient(90deg,transparent,transparent 100%);}
+
+  .rm-foot{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:36px}
+  .sign{padding-top:34px;border-top:1.4px solid #000;text-align:center;font-size:11px;
+    text-transform:uppercase;letter-spacing:1px;font-family:"Barlow Semi Condensed";font-weight:600;color:#222}
+  .rm-note{margin-top:10px;font-size:10px;color:#555;text-align:center;font-style:italic}
+  .totals{margin-top:12px;display:flex;justify-content:flex-end;gap:0}
+  .totbox{border:1px solid #000;display:flex}
+  .totbox .tk{background:#111;color:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;
+    padding:6px 12px;font-family:"Barlow Semi Condensed";text-transform:uppercase;font-size:11px;letter-spacing:1px}
+  .totbox .tv{padding:6px 26px;min-width:70px}
+
+  /* ---------- Impressão ---------- */
+  @media print{
+    @page{size:A4 portrait;margin:8mm}
+    body{background:#fff}
+    .panel,.stage-top{display:none !important}
+    .app{display:block}
+    .stage{padding:0;overflow:visible}
+    .sheet{box-shadow:none;width:auto;min-height:auto;padding:0}
+    table.rm thead{display:table-header-group}
+    tr{page-break-inside:avoid}
+  }
+  @media(max-width:820px){
+    .app{grid-template-columns:1fr}
+    .panel{position:static;height:auto}
+    .sheet{width:100%;padding:8mm 6mm}
+  }
+</style>
+
+<div class="app">
+  <!-- PAINEL -->
+  <aside class="panel">
+    <div class="brand">
+      <div class="dot">R</div>
+      <div>
+        <h1>Romaneio</h1>
+        <p>Conferência de carregamento</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="n">1</span> Enviar planilha</div>
+      <div class="drop" id="drop">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#f2a007" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <b>Clique ou arraste o arquivo</b>
+        <small>.xlsx, .xls ou .csv</small>
+      </div>
+      <input type="file" id="file" accept=".xlsx,.xls,.csv" hidden>
+      <div class="file-ok" id="fileOk"></div>
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="n">2</span> Dados do romaneio</div>
+      <label class="fld">Nº do romaneio</label>
+      <input class="tf" id="fRomaneio" placeholder="—">
+      <label class="fld">Motorista</label>
+      <input class="tf" id="fMotorista" placeholder="—">
+      <div class="row2">
+        <div>
+          <label class="fld">Veículo</label>
+          <input class="tf" id="fVeiculo" placeholder="—">
+        </div>
+        <div>
+          <label class="fld">Data</label>
+          <input class="tf" id="fData" placeholder="—">
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="n">3</span> Colunas do romaneio</div>
+      <div class="toggles" id="toggles">
+        <div class="tog">Coluna ✓ (tique do motorista)
+          <label class="switch"><input type="checkbox" data-col="chk" checked><span class="slider"></span></label></div>
+        <div class="tog">N.º do pedido
+          <label class="switch"><input type="checkbox" data-col="ped" checked><span class="slider"></span></label></div>
+        <div class="tog">Cliente
+          <label class="switch"><input type="checkbox" data-col="cli" checked><span class="slider"></span></label></div>
+        <div class="tog">Fantasia
+          <label class="switch"><input type="checkbox" data-col="fan" checked><span class="slider"></span></label></div>
+        <div class="tog">Endereço / bairro
+          <label class="switch"><input type="checkbox" data-col="addr"><span class="slider"></span></label></div>
+        <div class="tog">Volumes (em branco)
+          <label class="switch"><input type="checkbox" data-col="vol" checked><span class="slider"></span></label></div>
+      </div>
+    </div>
+
+    <button class="btn" id="print" disabled>
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Imprimir / Salvar PDF
+    </button>
+    <div class="hint">O campo <b>Volumes</b> sai em branco de propósito — o conferente escreve à mão a quantidade carregada.</div>
+  </aside>
+
+  <!-- PALCO -->
+  <main class="stage">
+    <div class="stage-top">
+      <span class="lbl">Pré-visualização</span>
+      <span class="count-pill" id="pill">Nenhuma planilha carregada</span>
+    </div>
+
+    <div id="emptyState" class="empty">
+      <div>
+        <div class="big">Aguardando planilha</div>
+        <p style="max-width:340px">Envie a planilha de conferência para montar o romaneio de carregamento pronto para impressão.</p>
+      </div>
+    </div>
+
+    <div class="sheet-wrap" id="sheetWrap" style="display:none">
+      <div class="sheet" id="sheet"></div>
+    </div>
+  </main>
+</div>
+
+<script>
+const state = { romaneio:"", motorista:"", veiculo:"", data:"", rows:[] };
+const cols = { chk:true, ped:true, cli:true, fan:true, addr:false, vol:true };
+
+const $ = s => document.querySelector(s);
+const drop = $("#drop"), fileInput = $("#file");
+
+drop.addEventListener("click", ()=>fileInput.click());
+["dragover","dragenter"].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add("drag")}));
+["dragleave","drop"].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove("drag")}));
+drop.addEventListener("drop", ev=>{ if(ev.dataTransfer.files[0]) handleFile(ev.dataTransfer.files[0]); });
+fileInput.addEventListener("change", ev=>{ if(ev.target.files[0]) handleFile(ev.target.files[0]); });
+
+function norm(s){ return (s==null?"":String(s)).trim(); }
+function up(s){ return norm(s).toUpperCase(); }
+
+function handleFile(file){
+  const reader = new FileReader();
+  reader.onload = e=>{
+    try{
+      const wb = XLSX.read(new Uint8Array(e.target.result), {type:"array"});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const grid = XLSX.utils.sheet_to_json(ws, {header:1, raw:false, defval:""});
+      parseGrid(grid);
+      const ok = $("#fileOk");
+      ok.style.display="block";
+      ok.textContent = "✓ " + file.name;
+    }catch(err){
+      alert("Não consegui ler o arquivo. Verifique se é uma planilha válida (.xlsx, .xls ou .csv).\n\n"+err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function parseGrid(grid){
+  // Cabeçalho do topo: A1/B1 = romaneio, A2/B2 = motorista
+  state.romaneio = norm(grid[0] && grid[0][1]) || "";
+  state.motorista = norm(grid[1] && grid[1][1]) || "";
+
+  // Localiza a linha de cabeçalho (a que contém "N.PEDIDO")
+  let hIdx = -1;
+  for(let i=0;i<Math.min(grid.length,15);i++){
+    const rowUp = (grid[i]||[]).map(up);
+    if(rowUp.includes("N.PEDIDO")){ hIdx = i; break; }
+  }
+  if(hIdx<0) hIdx = 4; // fallback padrão
+
+  const header = (grid[hIdx]||[]).map(up);
+  const find = names => { for(const n of names){ const k=header.indexOf(n); if(k>=0) return k; } return -1; };
+  const iOrd  = find(["ORDEM","#"]);
+  const iPed  = find(["N.PEDIDO","PEDIDO"]);
+  const iCli  = find(["CLIENTE"]);
+  const iFan  = find(["FANTASIA"]);
+  const iEnd  = find(["ENDEREÇO","ENDERECO"]);
+  const iNum  = find(["NUMERO","NÚMERO"]);
+  const iBai  = find(["BAIRRO"]);
+  const iCid  = find(["CIDADE"]);
+  const iVeic = find(["VEICULO","VEÍCULO"]);
+
+  const rows = [];
+  let veic = "";
+  for(let i=hIdx+1;i<grid.length;i++){
+    const r = grid[i]||[];
+    const ped = norm(r[iPed]);
+    const cli = norm(r[iCli]);
+    if(!ped && !cli) continue;            // pula linhas vazias
+    if(!ped && cli && cli.length<3) continue;
+    // ignora a sub-linha "Logistica" e afins (sem pedido e sem cliente real)
+    if(!ped && !/[a-z]/i.test(cli)) continue;
+    const ordRaw = norm(r[iOrd]);
+    let endereco = "";
+    if(iEnd>=0){
+      endereco = norm(r[iEnd]);
+      if(iNum>=0 && norm(r[iNum])) endereco += ", " + norm(r[iNum]);
+      const bc = [norm(r[iBai]), norm(r[iCid])].filter(Boolean).join(" - ");
+      if(bc) endereco += "  •  " + bc;
+    }
+    rows.push({
+      ord: ordRaw || String(rows.length+1),
+      ped, cli,
+      fan: iFan>=0 ? norm(r[iFan]) : "",
+      addr: endereco
+    });
+    if(!veic && iVeic>=0) veic = norm(r[iVeic]);
+  }
+  state.rows = rows;
+  state.veiculo = veic;
+  state.data = new Date().toLocaleDateString("pt-BR");
+
+  // Preenche os campos editáveis
+  $("#fRomaneio").value = state.romaneio;
+  $("#fMotorista").value = state.motorista;
+  $("#fVeiculo").value = state.veiculo;
+  $("#fData").value = state.data;
+  $("#print").disabled = rows.length===0;
+
+  render();
+}
+
+// campos editáveis atualizam a folha
+["fRomaneio","fMotorista","fVeiculo","fData"].forEach(id=>{
+  $("#"+id).addEventListener("input", e=>{
+    const key = id.replace("f","").toLowerCase();
+    state[key]=e.target.value; render();
+  });
+});
+// toggles de coluna
+document.querySelectorAll('#toggles input').forEach(cb=>{
+  cb.addEventListener("change", ()=>{ cols[cb.dataset.col]=cb.checked; render(); });
+});
+
+$("#print").addEventListener("click", ()=>window.print());
+
+function esc(s){ return (s||"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c])); }
+
+function render(){
+  if(!state.rows.length){
+    $("#emptyState").style.display="grid";
+    $("#sheetWrap").style.display="none";
+    $("#pill").textContent="Nenhuma planilha carregada";
+    return;
+  }
+  $("#emptyState").style.display="none";
+  $("#sheetWrap").style.display="flex";
+  $("#pill").textContent = state.rows.length + (state.rows.length===1?" cliente":" clientes");
+
+  // colspan / cabeçalhos dinâmicos
+  const th = [];
+  if(cols.chk) th.push('<th class="c-chk">✓</th>');
+  th.push('<th class="c-ord">Ord</th>');
+  if(cols.ped) th.push('<th class="c-ped">N.º Pedido</th>');
+  if(cols.cli||cols.fan||cols.addr) th.push('<th style="text-align:left;padding-left:8px">Cliente</th>');
+  if(cols.vol) th.push('<th class="c-vol">Volumes</th>');
+
+  const body = state.rows.map((r,idx)=>{
+    const tds=[];
+    if(cols.chk) tds.push('<td class="c-chk"><span class="chkbox"></span></td>');
+    tds.push('<td class="c-ord">'+esc(r.ord)+'</td>');
+    if(cols.ped) tds.push('<td class="c-ped">'+esc(r.ped)+'</td>');
+    if(cols.cli||cols.fan||cols.addr){
+      let inner="";
+      if(cols.cli && r.cli) inner+='<div class="cli">'+esc(r.cli)+'</div>';
+      if(cols.fan && r.fan && r.fan!==r.cli) inner+='<div class="fan">'+esc(r.fan)+'</div>';
+      if(cols.addr && r.addr) inner+='<div class="addr">'+esc(r.addr)+'</div>';
+      tds.push('<td style="padding:4px 8px">'+inner+'</td>');
+    }
+    if(cols.vol) tds.push('<td class="c-vol volcell"></td>');
+    return '<tr class="'+(idx%2?'zebra':'')+'">'+tds.join("")+'</tr>';
+  }).join("");
+
+  const totalVol = cols.vol
+    ? '<div class="totals"><div class="totbox"><div class="tk">Total de volumes</div><div class="tv"></div></div></div>'
+    : '';
+
+  $("#sheet").innerHTML = `
+    <div class="rm-head">
+      <div class="rm-title">
+        <div class="t1">Romaneio</div>
+        <div class="t2">Conferência de Carregamento</div>
+      </div>
+      <div class="rm-num">
+        <div class="k">Nº Romaneio</div>
+        <div class="v">${esc(state.romaneio)||"—"}</div>
+      </div>
+    </div>
+
+    <div class="rm-meta">
+      <div class="cell"><div class="k">Motorista</div><div class="v">${esc(state.motorista)||"&nbsp;"}</div></div>
+      <div class="cell"><div class="k">Veículo</div><div class="v">${esc(state.veiculo)||"&nbsp;"}</div></div>
+      <div class="cell"><div class="k">Data</div><div class="v">${esc(state.data)||"&nbsp;"}</div></div>
+    </div>
+
+    <table class="rm">
+      <thead><tr>${th.join("")}</tr></thead>
+      <tbody>${body}</tbody>
+    </table>
+
+    ${totalVol}
+
+    <div class="rm-note">O motorista marca (✓) cada cliente carregado. O conferente anota à mão a quantidade de volumes carregados.</div>
+
+    <div class="rm-foot">
+      <div class="sign">Assinatura do Conferente</div>
+      <div class="sign">Assinatura do Motorista</div>
+    </div>
+  `;
+}
+</script>
