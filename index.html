@@ -317,12 +317,13 @@ function parseGrid(grid){
 
   let hIdx=-1;
   for(let i=0;i<Math.min(grid.length,15);i++){
-    if((grid[i]||[]).map(up).includes("N.PEDIDO")){hIdx=i;break;}
+    if((grid[i]||[]).some(c=>up(c).replace(/\s+/g,"").startsWith("N.PED"))){hIdx=i;break;}
   }
   if(hIdx<0)hIdx=4;
   const header=(grid[hIdx]||[]).map(up);
   const find=names=>{for(const n of names){const k=header.indexOf(n);if(k>=0)return k;}return -1;};
-  const iOrd=find(["ORDEM","#"]),iPed=find(["N.PEDIDO","PEDIDO"]),iCli=find(["CLIENTE"]),
+  const findPre=pre=>{for(let k=0;k<header.length;k++){if(header[k].replace(/\s+/g,"").startsWith(pre))return k;}return -1;};
+  const iOrd=find(["ORDEM","#"]),iPed=(function(){const k=find(["N.PEDIDO","N.PED","PEDIDO"]);return k>=0?k:findPre("N.PED");})(),iCli=find(["CLIENTE"]),
         iFan=find(["FANTASIA"]),iEnd=find(["ENDEREÇO","ENDERECO"]),iNum=find(["NUMERO","NÚMERO"]),
         iBai=find(["BAIRRO"]),iCid=find(["CIDADE"]),iVeic=find(["VEICULO","VEÍCULO"]),iRep=find(["REPRESENTANTE"]);
 
